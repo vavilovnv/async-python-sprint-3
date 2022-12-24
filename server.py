@@ -100,6 +100,7 @@ class Server:
         logger.info('New client connected from %s:%s', ip, port)
         self.add_new_client(address, (reader, writer))
         login = await self.user_authorization(address)
+        logger.info('User %s authorized.', login)
         await self.write_to_client(address, 'You are in general chat.\n')
         while True:
             message = await self.read_from_client(address)
@@ -107,6 +108,7 @@ class Server:
                 await self.write_to_client(address, 'You are disconnected from chat. Have a nice day.\n')
                 writer.close()
                 logger.info('User %s at %s disconnected.', login, address)
+                del self.clients[address]
                 break
             else:
                 self.history.append(message)

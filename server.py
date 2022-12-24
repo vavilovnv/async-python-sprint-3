@@ -45,7 +45,6 @@ class Server:
             await self.write_to_client(address, 'Command unknown, please repeat.')
         return login
 
-
     async def new_connections(self, reader: StreamReader, writer: StreamWriter) -> None:
         ip, port = writer.get_extra_info('peername')
         address = f'{ip}:{port}'

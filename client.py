@@ -14,11 +14,19 @@ class Client:
     async def receive(self) -> None:
         server_message = ''
         while server_message != '/exit':
-            data = await self.reader.read(BYTES)
-            if data:
-                print(data.decode())
-            await asyncio.sleep(0.1)
-        self.writer.close()
+            try:
+                data = await self.reader.read(BYTES)
+            except Exception as error:
+                print(f'Ошибка чтения данных сервера: {error}.')
+            else:
+                if data:
+                    print(data.decode())
+                await asyncio.sleep(0.1)
+        try:
+            self.writer.close()
+            await self.writer.wait_closed()
+        except Exception as error:
+            print(f'Ошибка чтения клиентского writer: {error}.')
 
     async def send(self) -> None:
         client_message = ''

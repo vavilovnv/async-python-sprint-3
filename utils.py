@@ -18,12 +18,3 @@ def get_logger() -> logging.Logger:
     return logging.getLogger('chat-service')
 
 
-def format_datatime(datetime: datetime) -> str:
-    pattern = '%Y.%m.%d %H:%M:%S'
-    return datetime.strftime(pattern)
-
-
-def format_message(message: str, login: str, is_private: bool = False) -> str:
-    date_time = format_datatime(datetime.now())
-    private = 'in private' if is_private else ''
-    return f'{date_time} {login} {private} says: {message}'

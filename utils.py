@@ -6,14 +6,14 @@ HOST = '127.0.0.1'
 PORT = 8000
 
 EXIT = '/exit'
-SHOW_UNREAD_MESSAGES = '/show_unread'
+SHOW_UNREAD_MESSAGES = '/unread'
 USER_STATUS = '/status'
-SEND_PRIVATE_MESSAGE = '/send_private'
+SEND_PRIVATE_MESSAGE = '/private'
 SEND_MESSAGE = '/send'
-CREATE_CHAT = '/create_chat'
+CREATE_CHAT = '/create'
 SEND_TO_CHAT = '/send_chat'
-INVITE_TO_CHAT = '/invite_chat'
-JOIN_TO_CHAT = '/join_chat'
+INVITE_TO_CHAT = '/invite'
+JOIN_TO_CHAT = '/join'
 
 COMMANDS = {
     EXIT: '- disconnect from server',
@@ -27,6 +27,7 @@ COMMANDS = {
     JOIN_TO_CHAT: '<chat name> <invite-key or empty> - join to the private chat, or send request for the invite-key',
 }
 
+
 def get_logger() -> logging.Logger:
     """Настройки логгера для проекта."""
 
@@ -38,3 +39,10 @@ def get_logger() -> logging.Logger:
     return logging.getLogger('chat-service')
 
 
+def get_split_values(text: str) -> tuple:
+    if ' ' in text:
+        value1, value2 = text.split(maxsplit=1)
+    else:
+        value1 = text
+        value2 = ''
+    return value1, value2

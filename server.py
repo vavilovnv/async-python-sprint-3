@@ -2,7 +2,8 @@ import asyncio
 from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 from models import Chat, Message, User
-from utils import BYTES, HOST, PORT, get_logger
+from utils import (BYTES, HOST, PORT, get_logger, get_split_values, EXIT, SHOW_UNREAD_MESSAGES, USER_STATUS,
+                   SEND_PRIVATE_MESSAGE, SEND_MESSAGE, CREATE_CHAT, SEND_TO_CHAT, INVITE_TO_CHAT, JOIN_TO_CHAT)
 
 logger = get_logger()
 
@@ -136,7 +137,7 @@ class Server:
     async def send_private(self, message, cur_login, address):
         """Обработка запроса на отправку приватного сообщения другому пользователю."""
 
-        message = message.replace('/send_private', '').strip()
+        message = message.replace(SEND_PRIVATE_MESSAGE, '').strip()
         login, text = message.split(maxsplit=1)
         message_obj = Message(text, cur_login, is_private=True, recipient=login)
         self.history.append(message_obj)
@@ -154,7 +155,7 @@ class Server:
     async def send(self, message, login, address):
         """Обработка запроса на отправку сообщения в общий чат."""
 
-        text = message.replace('/send', '').strip()
+        text = message.replace(SEND_MESSAGE, '').strip()
         message_obj = Message(text, login)
         self.history.append(message_obj)
         text = message_obj.text
@@ -165,7 +166,8 @@ class Server:
                     adr, (f'Sorry, but you have reached your limit '
                           f'of {self.sent_message_per_user} per hour.'
                           f'The message not be sent.'))
-        user.count_sent_messages(datetime.now())
+            return
+        user.count_sent_messages = datetime.now()
         for adr in self.connections:
             if adr == address:
                 text.replace(f' {login} ', ' me ')
@@ -187,7 +189,7 @@ class Server:
     async def create_chat(self, message, login, address):
         """Обработка запроса на создание приватного чата."""
 
-        chat_name = message.replace('/create_chat', '').strip()
+        chat_name = message.replace(CREATE_CHAT, '').strip()
         if not chat_name:
             await self.write_to_client(address, 'Chat name can not be empty.')
         elif chat_name in self.chats:
@@ -218,22 +220,33 @@ class Server:
     async def send_to_chat(self, message, login, address) -> None:
         """Отправка сообщения в приватный чат."""
 
-        message = message.replace('/send_chat', '').strip()
-        chat_name, text = message.split(maxsplit=1)
+        message = message.replace(SEND_TO_CHAT, '').strip()
+        chat_name, text = get_split_values(message)
         if chat_name not in self.chats:
             await self.write_to_client(address, f'Chat {chat_name} not found.')
             return
-        if self.users[login] not in self.chats[chat_name].users:
+        if not text:
+            await self.write_to_client(address, 'Message text can not be empty.')
+            return
+        chat = self.chats[chat_name]
+        if self.users[login] not in chat.users:
             await self.write_to_client(address, f'You are not member of chat {chat_name}.')
             return
         message_obj = Message(text, login, is_private=True, chat_name=chat_name)
         self.history.append(message_obj)
+        addresses = []
+        for user in chat.users:
+            addresses.extend(user.addresses)
+        for adr in addresses:
+            if adr == address:
+                text.replace(f' {login} ', ' me ')
+            await self.write_to_client(adr, message_obj.text)
 
     async def invite_user_to_chat(self, message, curr_login, address) -> None:
         """Обработка запроса на приглашение пользователя в приватный чат."""
 
         message = message.replace('/invite_chat', '').strip()
-        login, chat_name = message.split(maxsplit=1)
+        login, chat_name = get_split_values(message)
         if not login or not chat_name:
             await self.write_to_client(address, 'Wrong commands parameters.')
             return
@@ -265,8 +278,8 @@ class Server:
         Если у пользователя нет токена, будет отправлен запрос администратору чата.
         Если токен есть и он валиден, пользователь присоединяется к чату."""
 
-        message = message.replace('/join_chat', '').strip()
-        chat_name, invite_key = message.split()
+        message = message.replace(JOIN_TO_CHAT, '').strip()
+        chat_name, invite_key = get_split_values(message)
         if not chat_name:
             await self.write_to_client(address, 'Chat name can not be empty.')
             return
@@ -290,7 +303,11 @@ class Server:
                         address,
                         'A request has been sent to the admin.')
                     for adr in admin.addresses:
-                        await self.write_to_client(adr, f'User {login} wants to join the chat {chat_name}.')
+                        await self.write_to_client(
+                            adr,
+                            f'User {login} wants to join the chat {chat_name}.',
+                            line_break=True)
+                    return
                 elif answer == 'n':
                     return
                 else:
@@ -305,24 +322,24 @@ class Server:
         """Обработка запросов от клиентов."""
 
         while message := await self.read_from_client(address):
-            if message == '/exit':
+            if message == EXIT:
                 await self.close_client_connection(address, login)
                 break
-            elif message == '/show_unread':
+            elif message == SHOW_UNREAD_MESSAGES:
                 await self.show_unread(login, address)
-            elif message == '/status':
+            elif message == USER_STATUS:
                 await self.show_status(login, address)
-            elif message.startswith('/send_private'):
+            elif message.startswith(SEND_PRIVATE_MESSAGE):
                 await self.send_private(message, login, address)
-            elif message.startswith('/send'):
-                await self.send(message, login, address)
-            elif message.startswith('/create_chat'):
-                await self.create_chat(message, login, address)
-            elif message.startswith('/send_chat'):
+            elif message.startswith(SEND_TO_CHAT):
                 await self.send_to_chat(message, login, address)
-            elif message.startswith('/invite_chat'):
+            elif message.startswith(SEND_MESSAGE):
+                await self.send(message, login, address)
+            elif message.startswith(CREATE_CHAT):
+                await self.create_chat(message, login, address)
+            elif message.startswith(INVITE_TO_CHAT):
                 await self.invite_user_to_chat(message, login, address)
-            elif message.startswith('/join_chat'):
+            elif message.startswith(JOIN_TO_CHAT):
                 await self.join_to_chat(message, login, address)
             else:
                 await self.write_to_client(address, 'Wrong command.')
@@ -347,7 +364,7 @@ class Server:
 
 
 if __name__ == '__main__':
-    server = Server()
+    server = Server(sent_message_per_user=3)
     try:
         asyncio.run(server.run_server())
     except KeyboardInterrupt:

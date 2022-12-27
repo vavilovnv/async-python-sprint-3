@@ -1,7 +1,7 @@
 import asyncio
 from aioconsole import ainput
 
-from utils import BYTES, HOST, PORT
+from utils import BYTES, COMMANDS, HOST, PORT
 
 
 class Client:
@@ -37,6 +37,9 @@ class Client:
             await asyncio.sleep(0.1)
 
     async def run_client(self) -> None:
+        print('Commands description:')
+        print(*[f'{k} {v}' for k, v in COMMANDS.items()], sep='\n')
+        print()
         try:
             self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
             await asyncio.gather(self.send(), self.receive())

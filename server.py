@@ -10,10 +10,12 @@ logger = get_logger()
 
 class Server:
     def __init__(self,
+                 event_loop: asyncio.AbstractEventLoop,
                  host: str = HOST,
                  port: int = PORT,
                  short_history_depth: int = 20,
                  sent_message_per_user: int = 20):
+        self.loop: asyncio.AbstractEventLoop = event_loop
         self.host: str = host
         self.port: str = port
         self.short_history_depth: int = short_history_depth
@@ -357,15 +359,15 @@ class Server:
         await self.chatting_with_user(address, login)
 
     async def run_server(self) -> None:
-        server_instance = await asyncio.start_server(self.new_connection, self.host, self.port)
+        await asyncio.start_server(self.new_connection, self.host, self.port)
         logger.info('Server running at %s:%s', self.host, self.port)
-        async with server_instance:
-            await server_instance.serve_forever()
 
 
 if __name__ == '__main__':
-    server = Server(sent_message_per_user=3)
+    loop = asyncio.new_event_loop()
+    server = Server(loop)
+    loop.create_task(server.run_server())
     try:
-        asyncio.run(server.run_server())
+        loop.run_forever()
     except KeyboardInterrupt:
         logger.info('Server stopped')

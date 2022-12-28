@@ -1,7 +1,7 @@
 import logging
 import sys
 
-BYTES = 1024 * 5
+BYTES = 1024
 HOST = '127.0.0.1'
 PORT = 8000
 

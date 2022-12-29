@@ -22,11 +22,16 @@ COMMANDS_DESCRIPTION = {
     SHOW_UNREAD_MESSAGES: '- show all unread message in general chat',
     USER_STATUS: '- show user status',
     SEND_MESSAGE: '<message> - send the message to a user',
-    SEND_PRIVATE_MESSAGE: '<user_login> <message> - send the private message to a user',
+    SEND_PRIVATE_MESSAGE: ('<user_login> <message> - '
+                           'send the private message to a user'),
     CREATE_CHAT: '<chat name> - create a private chat',
-    SEND_TO_CHAT: '<chat name> <message> - send the message to a private chat',
-    INVITE_TO_CHAT: '<user login> <chat name> - invite a user to a private chat',
-    JOIN_TO_CHAT: '<chat name> <invite-key or empty> - join to the private chat, or send request for the invite-key',
+    SEND_TO_CHAT: ('<chat name> <message> - '
+                   'send the message to a private chat'),
+    INVITE_TO_CHAT: ('<user login> <chat name> - '
+                     'invite a user to a private chat'),
+    JOIN_TO_CHAT: ('<chat name> <invite-key or empty> - '
+                   'join to the private chat, or send request for the '
+                   'invite-key'),
 }
 
 AUTH_OR_LOGIN = 'Please, register (/auth) or log in (/login).'

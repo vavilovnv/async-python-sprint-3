@@ -49,7 +49,9 @@ class Client:
         print(*[f'{k} {v}' for k, v in COMMANDS_DESCRIPTION.items()], sep='\n')
         print()
         try:
-            self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
+            self.reader, self.writer = await asyncio.open_connection(
+                self.host,
+                self.port)
             await asyncio.gather(self.send(), self.receive())
         except Exception as error:
             print(error)

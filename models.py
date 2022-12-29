@@ -5,7 +5,12 @@ from uuid import uuid4
 
 class Message:
 
-    def __init__(self, text: str, login: str, is_private: bool = False, recipient: str = '', chat_name: str = ''):
+    def __init__(self,
+                 text: str,
+                 login: str,
+                 is_private: bool = False,
+                 recipient: str = '',
+                 chat_name: str = ''):
         self.is_private = is_private
         self.login = login
         self.pub_date = datetime.now()

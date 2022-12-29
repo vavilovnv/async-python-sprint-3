@@ -369,7 +369,8 @@ class Server:
             return
         await self.write_to_client(
             address,
-            f'An invitation to user {login} to chat {chat_name} has been sent.')
+            f'An invitation to user {login} to chat '
+            f'{chat_name} has been sent.')
         invite_key = chat.get_private_key(login)
         user.private_chats[chat_name] = invite_key
         for adr in user.addresses:

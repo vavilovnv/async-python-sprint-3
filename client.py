@@ -1,10 +1,11 @@
 import asyncio
 from asyncio import StreamReader, StreamWriter
+from signal import SIG_DFL, SIGPIPE, signal
 from typing import Optional
-from signal import signal, SIGPIPE, SIG_DFL
-from aioconsole import ainput
-from utils import BYTES, COMMANDS_DESCRIPTION, HOST, PORT, EXIT
 
+from aioconsole import ainput
+
+from utils import BYTES, COMMANDS_DESCRIPTION, EXIT, HOST, PORT
 
 signal(SIGPIPE, SIG_DFL)
 

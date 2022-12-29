@@ -2,12 +2,13 @@ import asyncio
 import socket
 import threading
 import time
-from signal import signal, SIGPIPE, SIG_DFL
+from signal import SIG_DFL, SIGPIPE, signal
 from unittest import TestCase
-from server import Server
-from utils import AUTH_OR_LOGIN, INPUT_LOGIN, GENERAL_CHAT, LOGIN_SET, INPUT_PASSWORD, BYTES, HOST, PORT, SEND_MESSAGE,\
-    EXIT, LOGIN_SUCCESSFUL, AUTH, LOGIN
 
+from server import Server
+from utils import (AUTH, AUTH_OR_LOGIN, BYTES, EXIT, GENERAL_CHAT, HOST,
+                   INPUT_LOGIN, INPUT_PASSWORD, LOGIN, LOGIN_SET,
+                   LOGIN_SUCCESSFUL, PORT, SEND_MESSAGE)
 
 signal(SIGPIPE, SIG_DFL)
 

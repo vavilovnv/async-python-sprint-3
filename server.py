@@ -3,11 +3,12 @@ from asyncio.streams import StreamReader, StreamWriter
 from datetime import datetime
 
 from models import Chat, Message, User
-from utils import (AUTH_OR_LOGIN, BYTES, CREATE_CHAT, EXIT, GENERAL_CHAT, HOST,
-                   INPUT_LOGIN, INPUT_PASSWORD, INVITE_TO_CHAT, JOIN_TO_CHAT,
-                   LOGIN_SET, LOGIN_SUCCESSFUL, PORT, SEND_MESSAGE,
-                   SEND_PRIVATE_MESSAGE, SEND_TO_CHAT, SHOW_UNREAD_MESSAGES,
-                   USER_STATUS, get_logger, get_split_values)
+from utils import (AUTH, AUTH_OR_LOGIN, BYTES, CREATE_CHAT, EXIT, GENERAL_CHAT,
+                   HOST, INPUT_LOGIN, INPUT_PASSWORD, INVITE_TO_CHAT,
+                   JOIN_TO_CHAT, LOGIN, LOGIN_SET, LOGIN_SUCCESSFUL, PORT,
+                   SEND_MESSAGE, SEND_PRIVATE_MESSAGE, SEND_TO_CHAT,
+                   SHOW_UNREAD_MESSAGES, USER_STATUS, get_logger,
+                   get_split_values)
 
 logger = get_logger()
 
@@ -46,7 +47,6 @@ class Server:
             await writer.drain()
         except Exception as error:
             logger.error(error)
-            del self.connections[address]
             try:
                 writer.close()
                 await writer.wait_closed()
@@ -137,10 +137,10 @@ class Server:
         while True:
             await self.write_to_client(address, AUTH_OR_LOGIN)
             answer = await self.read_from_client(address)
-            if answer == '/auth':
+            if answer == AUTH:
                 login = await self.create_user(address)
                 break
-            elif answer == '/login':
+            elif answer == LOGIN:
                 login = await self.login_user(address)
                 if login:
                     break
@@ -232,7 +232,7 @@ class Server:
         user.count_sent_messages = datetime.now()
         for adr in self.connections:
             if adr == address:
-                text.replace(f' {login} ', ' me ')
+                text = text.replace(f' {login} ', ' me ')
             await self.write_to_client(adr, text)
 
     async def show_unread(self, login: str, address: str) -> None:
@@ -341,7 +341,7 @@ class Server:
                                   address: str) -> None:
         """Обработка запроса на приглашение пользователя в приватный чат."""
 
-        message = message.replace('/invite_chat', '').strip()
+        message = message.replace(INVITE_TO_CHAT, '').strip()
         login, chat_name = get_split_values(message)
         if not login or not chat_name:
             await self.write_to_client(address, 'Wrong commands parameters.')

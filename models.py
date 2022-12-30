@@ -20,8 +20,8 @@ class Message:
 
     def format_message(self, text: str) -> str:
         pub_date = self.pub_date.strftime('%Y.%m.%d %H:%M:%S')
-        private = 'in private' if self.is_private else ''
-        return f'{pub_date} {self.login} {private} says: {text}'
+        private = 'in private ' if self.is_private else ''
+        return f'{pub_date} {self.login} {private}says: {text}'
 
 
 class User:

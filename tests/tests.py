@@ -8,7 +8,7 @@ from unittest import TestCase
 from server import Server
 from utils import (AUTH, AUTH_OR_LOGIN, BYTES, EXIT, GENERAL_CHAT, HOST,
                    INPUT_LOGIN, INPUT_PASSWORD, LOGIN, LOGIN_SET,
-                   LOGIN_SUCCESSFUL, PORT, SEND_MESSAGE)
+                   LOGIN_SUCCESSFUL, PORT, SEND_MESSAGE, SEND_PRIVATE_MESSAGE)
 
 signal(SIGPIPE, SIG_DFL)
 
@@ -56,6 +56,16 @@ class TestServer(TestCase):
         self.runner.stop()
         self.runner.join()
 
+    @staticmethod
+    def connect_to_server(sock):
+        sock.connect((HOST, PORT))
+        return sock.recv(BYTES)
+
+    @staticmethod
+    def send_recv_message(sock, message):
+        sock.send(message)
+        return sock.recv(BYTES)
+
     def test_server_methods(self):
         """Тестирование подключения к серверу и обработки запросов."""
 
@@ -65,22 +75,20 @@ class TestServer(TestCase):
         self.runner.run_coroutine(server.run_server())
         sock1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # проверяем первое подключение к серверу
-        sock1.connect((HOST, PORT))
-        data = sock1.recv(BYTES)
+        data = self.connect_to_server(sock1)
         self.assertEqual(len(server.connections), 1)
 
         # проверяем приглашение на авторизацию и создаем нового пользователя
         self.assertEqual(data.decode(), f'{AUTH_OR_LOGIN}\n')
-        sock1.send(AUTH.encode())
-        data = sock1.recv(BYTES)
+        data = self.send_recv_message(sock1, AUTH.encode())
         self.assertEqual(data.decode(), INPUT_LOGIN)
-        sock1.send('new_user'.encode())
-        data = sock1.recv(BYTES)
+        data = self.send_recv_message(sock1, 'new_user'.encode())
         self.assertEqual(data.decode(), INPUT_PASSWORD)
-        sock1.send('password'.encode())
-        data = sock1.recv(BYTES)
+        data = self.send_recv_message(sock1, 'password'.encode())
 
         # проверяем вход в чат и количество созданных юзеров
         self.assertEqual(data.decode(), f'{LOGIN_SET}\n')
@@ -89,47 +97,82 @@ class TestServer(TestCase):
         self.assertEqual(len(server.users), 1)
 
         # проверяем второе подключение к серверу
-        sock2.connect((HOST, PORT))
-        sock2.recv(BYTES)
+        self.connect_to_server(sock2)
         self.assertEqual(len(server.connections), 2)
 
         # проверяем приглашение на авторизацию и логинимся под созданным
         # ранее пользователем
-        sock2.send(LOGIN.encode())
-        sock2.recv(BYTES)
-        sock2.send('new_user'.encode())
-        sock2.recv(BYTES)
-        sock2.send('password'.encode())
+        self.send_recv_message(sock2, LOGIN.encode())
+        self.send_recv_message(sock2, 'new_user'.encode())
+        data = self.send_recv_message(sock2, 'password'.encode())
 
         # проверяем вход в чат и то, что количество пользователей осталось
         # прежним
-        data = sock2.recv(BYTES)
         self.assertEqual(data.decode(), f'{LOGIN_SUCCESSFUL}\n')
         data = sock2.recv(BYTES)
         self.assertEqual(data.decode(), f'{GENERAL_CHAT}\n')
         self.assertEqual(len(server.users), 1)
 
-        # отправляем сообщение от второго подключения в общий чат
-        message = f'{SEND_MESSAGE} hi!'
-        sock2.send(message.encode())
+        # проверяем третье подключение к серверу
+        data = self.connect_to_server(sock3)
+        self.assertEqual(len(server.connections), 3)
 
-        # проверяем его получение первым подключением
+        # проверяем приглашение на авторизацию и создаем второго пользователя
+        self.assertEqual(data.decode(), f'{AUTH_OR_LOGIN}\n')
+        data = self.send_recv_message(sock3, AUTH.encode())
+        self.assertEqual(data.decode(), INPUT_LOGIN)
+        data = self.send_recv_message(sock3, 'another_user'.encode())
+        self.assertEqual(data.decode(), INPUT_PASSWORD)
+        data = self.send_recv_message(sock3, 'another_password'.encode())
+
+        # проверяем вход в чат и количество созданных пользователей
+        self.assertEqual(data.decode(), f'{LOGIN_SET}\n')
+        data = sock3.recv(BYTES)
+        self.assertEqual(data.decode(), f'{GENERAL_CHAT}\n')
+        self.assertEqual(len(server.users), 2)
+
+        # проверяем четвертое подключение к серверу
+        data = self.connect_to_server(sock4)
+        self.assertEqual(len(server.connections), 4)
+
+        # проверяем приглашение на авторизацию и создаем третьего пользователя
+        self.assertEqual(data.decode(), f'{AUTH_OR_LOGIN}\n')
+        data = self.send_recv_message(sock4, AUTH.encode())
+        self.assertEqual(data.decode(), INPUT_LOGIN)
+        data = self.send_recv_message(sock4, 'user3'.encode())
+        self.assertEqual(data.decode(), INPUT_PASSWORD)
+        data = self.send_recv_message(sock4, 'password3'.encode())
+
+        # проверяем вход в чат и количество созданных пользователей
+        self.assertEqual(data.decode(), f'{LOGIN_SET}\n')
+        data = sock4.recv(BYTES)
+        self.assertEqual(data.decode(), f'{GENERAL_CHAT}\n')
+        self.assertEqual(len(server.users), 3)
+
+        # отправляем сообщение от второго подключения в общий чат и проверяем
+        # его получение самим подключением
+        message = f'{SEND_MESSAGE} hi!'
+        data = self.send_recv_message(sock2, message.encode())
+        self.assertIn('says: hi!', data.decode())
+
+        # проверяем получение сообщения первым подключением
         data = sock1.recv(BYTES)
         self.assertIn('says: hi!', data.decode())
 
-        # проверяем его получение вторым подключением
-        data = sock2.recv(BYTES)
+        # проверяем получение сообщения третьим подключением
+        data = sock3.recv(BYTES)
         self.assertIn('says: hi!', data.decode())
 
         # убеждаемся что в истории сохранено одно сообщение
         self.assertEqual(len(server.history), 1)
 
-        # отправляем второе сообщение от первого клиента и убеждаемся, что его
-        # получили оба клиента
+        # отправляем второе сообщение от первого клиента и убеждаемся, что оно
+        # получено этим подключением
         message = f'{SEND_MESSAGE} hi again!'
-        sock1.send(message.encode())
-        data = sock1.recv(BYTES)
+        data = self.send_recv_message(sock1, message.encode())
         self.assertIn('says: hi again!', data.decode())
+
+        # а также получено другим подключением
         data = sock2.recv(BYTES)
         self.assertIn('says: hi again!', data.decode())
 
@@ -138,8 +181,7 @@ class TestServer(TestCase):
 
         # отправляем третье сообщение, которое сервер должен отвергнуть
         message = f'{SEND_MESSAGE} hi once more!'
-        sock2.send(message.encode())
-        data = sock2.recv(BYTES)
+        data = self.send_recv_message(sock2, message.encode())
         self.assertEqual(
             data.decode(),
             ('Sorry, but you have reached your limit of 2 per hour. '
@@ -147,9 +189,14 @@ class TestServer(TestCase):
 
         # проверяем что в истории по прежнему два сообщения
         self.assertEqual(len(server.history), 2)
-        # time.sleep(5)
+
         # отключаем клиентов
         sock1.send(EXIT.encode())
         sock2.send(EXIT.encode())
+        sock3.send(EXIT.encode())
+        sock4.send(EXIT.encode())
+        time.sleep(0.5)
         sock1.close()
         sock2.close()
+        sock3.close()
+        sock4.close()

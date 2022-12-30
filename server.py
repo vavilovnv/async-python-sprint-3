@@ -482,6 +482,8 @@ class Server:
         if login:
             logger.info('User %s authorized.', login)
             await self.send_short_history(address)
+            # review fix
+            # ошибку исправил, в тесты добавил 4 подключения к серверу
             await self.chatting_with_user(address, login)
 
     async def run_server(self) -> None:

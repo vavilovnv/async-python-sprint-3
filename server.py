@@ -15,13 +15,14 @@ logger = get_logger()
 
 class Server:
     def __init__(self,
-                 event_loop: asyncio.AbstractEventLoop,
+                 event_loop: asyncio.AbstractEventLoop = None,
                  host: str = HOST,
                  port: int = PORT,
                  short_history_depth: int = 20,
-                 sent_message_per_user: int = 20):
+                 sent_message_per_user: int = 20
+                 ):
 
-        self.event_loop: asyncio.AbstractEventLoop = event_loop
+        self.event_loop: asyncio.AbstractEventLoop = event_loop  # для тестов
         self.host: str = host
         self.port: int = port
         self.short_history_depth: int = short_history_depth
@@ -34,7 +35,8 @@ class Server:
     async def write_to_client(self,
                               address: str,
                               message: str,
-                              line_break: bool = True) -> None:
+                              line_break: bool = True
+                              ) -> None:
         """Отправка сообщения клиенту."""
 
         connection = self.connections.get(address)
@@ -76,7 +78,8 @@ class Server:
 
     async def get_auth_data(self,
                             address: str,
-                            new_user: bool = False) -> tuple:
+                            new_user: bool = False
+                            ) -> tuple:
         """Получение логина и пароля пользователя."""
 
         login, password = '', ''
@@ -189,7 +192,8 @@ class Server:
     async def send_private(self,
                            message,
                            cur_login: str,
-                           address: str) -> None:
+                           address: str
+                           ) -> None:
         """Обработка запроса на отправку приватного сообщения другому
         пользователю."""
 
@@ -252,7 +256,8 @@ class Server:
     async def create_chat(self,
                           message: str,
                           login: str,
-                          address: str) -> None:
+                          address: str
+                          ) -> None:
         """Обработка запроса на создание приватного чата."""
 
         chat_name = message.replace(CREATE_CHAT, '').strip()
@@ -300,7 +305,8 @@ class Server:
     async def send_to_chat(self,
                            message: str,
                            login: str,
-                           address: str) -> None:
+                           address: str
+                           ) -> None:
         """Отправка сообщения в приватный чат."""
 
         message = message.replace(SEND_TO_CHAT, '').strip()
@@ -338,7 +344,8 @@ class Server:
     async def invite_user_to_chat(self,
                                   message: str,
                                   curr_login: str,
-                                  address: str) -> None:
+                                  address: str
+                                  ) -> None:
         """Обработка запроса на приглашение пользователя в приватный чат."""
 
         message = message.replace(INVITE_TO_CHAT, '').strip()
@@ -382,7 +389,8 @@ class Server:
     async def join_to_chat(self,
                            message: str,
                            login: str,
-                           address: str) -> None:
+                           address: str
+                           ) -> None:
         """Обработка запроса на присоединение пользователя к приватному чату.
         Если у пользователя нет токена, будет отправлен запрос администратору
         чата. Если токен есть и он валиден, пользователь присоединяется к
@@ -471,7 +479,8 @@ class Server:
 
     async def new_connection(self,
                              reader: StreamReader,
-                             writer: StreamWriter) -> None:
+                             writer: StreamWriter
+                             ) -> None:
         """Установка нового соединения с клиентом."""
 
         ip, port = writer.get_extra_info('peername')
@@ -482,20 +491,19 @@ class Server:
         if login:
             logger.info('User %s authorized.', login)
             await self.send_short_history(address)
-            # review fix
-            # ошибку исправил, в тесты добавил 4 подключения к серверу
             await self.chatting_with_user(address, login)
 
     async def run_server(self) -> None:
-        await asyncio.start_server(self.new_connection, self.host, self.port)
+        instance = await asyncio.start_server(self.new_connection, self.host, self.port)
         logger.info('Server running at %s:%s', self.host, self.port)
+        if not self.event_loop:
+            async with instance:
+                await instance.serve_forever()
 
 
 if __name__ == '__main__':
-    loop = asyncio.new_event_loop()
-    server = Server(loop)
-    loop.create_task(server.run_server())
+    server = Server()
     try:
-        loop.run_forever()
+        asyncio.run(server.run_server())
     except KeyboardInterrupt:
         logger.info('Server stopped')
